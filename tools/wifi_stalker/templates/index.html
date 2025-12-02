@@ -53,7 +53,7 @@
                 <button @click="loadUniFiClients()" class="btn btn-primary" :disabled="isLoadingClients">
                     <span x-text="isLoadingClients ? 'Loading...' : '📡 Get Devices'"></span>
                 </button>
-                <button @click="showWebhooks = true" class="btn btn-secondary">
+                <button type="button" @click="showWebhooks = true; console.log('Webhooks clicked, showWebhooks:', showWebhooks)" class="btn btn-secondary">
                     🔔 Webhooks
                 </button>
             </div>
