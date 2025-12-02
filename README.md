@@ -45,13 +45,15 @@ Build the perfect UniFi network at [uiproductselector.com](https://uiproductsele
 
 No authentication, access via `http://localhost:8000`
 
+**Note:** Private repository - requires GitHub access and SSH keys configured.
+
 ```bash
 # Install Docker
 sudo apt update && sudo apt install -y docker.io docker-compose
 sudo usermod -aG docker $USER && newgrp docker
 
-# Clone and setup
-git clone https://github.com/CrosstalkSolutions/unifi-toolkit.git
+# Clone and setup (requires SSH key access)
+git clone git@github.com:Crosstalk-Solutions/unifi-toolkit.git
 cd unifi-toolkit
 ./setup.sh  # Select 1 for Local
 
@@ -70,8 +72,8 @@ Authentication enabled, HTTPS with Let's Encrypt via Caddy
 sudo apt update && sudo apt install -y docker.io docker-compose
 sudo usermod -aG docker $USER && newgrp docker
 
-# Clone and setup
-git clone https://github.com/CrosstalkSolutions/unifi-toolkit.git
+# Clone and setup (requires SSH key access)
+git clone git@github.com:Crosstalk-Solutions/unifi-toolkit.git
 cd unifi-toolkit
 ./setup.sh  # Select 2 for Production
 # Enter: domain name, admin username, password
@@ -236,8 +238,8 @@ Never expose UniFi controllers via port forwarding
 ## Running with Python (Alternative to Docker)
 
 ```bash
-# Clone repository
-git clone https://github.com/CrosstalkSolutions/unifi-toolkit.git
+# Clone repository (requires SSH key access)
+git clone git@github.com:Crosstalk-Solutions/unifi-toolkit.git
 cd unifi-toolkit
 
 # Create virtual environment (Python 3.9-3.12 only, NOT 3.13+)

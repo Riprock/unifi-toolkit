@@ -2,6 +2,8 @@
 
 Get up and running in 5 minutes.
 
+**Note:** Private repository - requires GitHub access and SSH keys configured.
+
 ---
 
 ## Ubuntu Server (Docker)
@@ -13,8 +15,8 @@ Get up and running in 5 minutes.
 sudo apt update && sudo apt install -y docker.io docker-compose
 sudo usermod -aG docker $USER && newgrp docker
 
-# Clone and setup
-git clone https://github.com/CrosstalkSolutions/unifi-toolkit.git
+# Clone and setup (requires SSH key access)
+git clone git@github.com:Crosstalk-Solutions/unifi-toolkit.git
 cd unifi-toolkit
 ./setup.sh  # Select 1 for Local
 
@@ -31,8 +33,8 @@ docker-compose up -d
 sudo apt update && sudo apt install -y docker.io docker-compose
 sudo usermod -aG docker $USER && newgrp docker
 
-# Clone and setup
-git clone https://github.com/CrosstalkSolutions/unifi-toolkit.git
+# Clone and setup (requires SSH key access)
+git clone git@github.com:Crosstalk-Solutions/unifi-toolkit.git
 cd unifi-toolkit
 ./setup.sh  # Select 2 for Production
 # Enter: domain, username, password
