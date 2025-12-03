@@ -327,7 +327,7 @@
                 </div>
 
                 <!-- Threat Watch Tool -->
-                <div class="tool-card">
+                <div class="tool-card" id="threat-watch-card">
                     <div class="tool-icon">🛡️</div>
                     <h2>Threat Watch</h2>
                     <p class="tool-description">
@@ -340,8 +340,9 @@
                         <span class="feature-badge">Geo Lookup</span>
                     </div>
                     <div class="tool-actions">
-                        <a href="/threats/" class="btn btn-primary">Open Threat Watch</a>
+                        <a href="/threats/" class="btn btn-primary" id="threat-watch-btn">Open Threat Watch</a>
                     </div>
+                    <div class="tool-status" id="threat-watch-status" style="display: none;"></div>
                     <div class="tool-version">v0.1.0</div>
                 </div>
 
@@ -879,6 +880,54 @@
                     closeModal();
                 }
             });
+        })();
+
+        // Gateway Check for Threat Watch
+        (function() {
+            const threatWatchCard = document.getElementById('threat-watch-card');
+            const threatWatchBtn = document.getElementById('threat-watch-btn');
+            const threatWatchStatus = document.getElementById('threat-watch-status');
+
+            async function checkGatewayAvailability() {
+                try {
+                    const response = await fetch('/api/config/gateway-check');
+                    const data = await response.json();
+
+                    if (!data.configured) {
+                        // UniFi not configured - show as unavailable
+                        threatWatchCard.classList.add('tool-unavailable');
+                        threatWatchBtn.classList.add('disabled');
+                        threatWatchBtn.style.pointerEvents = 'none';
+                        threatWatchStatus.style.display = 'block';
+                        threatWatchStatus.innerHTML = '⚠️ <strong>UniFi controller not configured.</strong> Configure it using the settings button above.';
+                        return;
+                    }
+
+                    if (!data.has_gateway) {
+                        // No gateway found - Threat Watch unavailable
+                        threatWatchCard.classList.add('tool-unavailable');
+                        threatWatchBtn.classList.add('disabled');
+                        threatWatchBtn.style.pointerEvents = 'none';
+                        threatWatchStatus.style.display = 'block';
+                        threatWatchStatus.innerHTML = '⚠️ <strong>Threat Watch requires a UniFi Gateway.</strong><br>Your site has no gateway device (UDM, UCG, UXG, or USG). IDS/IPS features are only available on gateway devices.';
+                    } else {
+                        // Gateway found - Threat Watch available
+                        threatWatchCard.classList.remove('tool-unavailable');
+                        threatWatchBtn.classList.remove('disabled');
+                        threatWatchBtn.style.pointerEvents = 'auto';
+                        threatWatchStatus.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Failed to check gateway availability:', error);
+                    // Don't block access on error - let the tool handle it
+                }
+            }
+
+            // Check on page load
+            checkGatewayAvailability();
+
+            // Re-check after system status loads (in case config was just added)
+            setTimeout(checkGatewayAvailability, 2000);
         })();
     </script>
 </body>

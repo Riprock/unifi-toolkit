@@ -883,6 +883,45 @@ class UniFiClient:
                 "error": str(e)
             }
 
+    async def has_gateway(self) -> bool:
+        """
+        Check if the site has a UniFi Gateway device.
+        IDS/IPS features require a gateway (UDM, USG, UCG, UXG).
+
+        Returns:
+            True if a gateway device is present, False otherwise
+        """
+        if not self._session:
+            raise RuntimeError("Not connected to UniFi controller. Call connect() first.")
+
+        try:
+            if self.is_unifi_os:
+                url = f"{self.host}/proxy/network/api/s/{self.site}/stat/device"
+            else:
+                url = f"{self.host}/api/s/{self.site}/stat/device"
+
+            async with self._session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    devices = data.get('data', [])
+
+                    # Check for gateway device types
+                    for device in devices:
+                        device_type = device.get('type', '')
+                        if device_type in ('ugw', 'udm', 'uxg'):
+                            logger.info(f"Found gateway: {device.get('model', 'Unknown')}")
+                            return True
+
+                    logger.info("No gateway device found")
+                    return False
+                else:
+                    logger.error(f"Failed to get devices: {resp.status}")
+                    return False
+
+        except Exception as e:
+            logger.error(f"Failed to check for gateway: {e}")
+            return False
+
     async def test_connection(self) -> Dict:
         """
         Test the connection to the UniFi controller

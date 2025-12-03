@@ -43,6 +43,22 @@
             </div>
         </header>
 
+        <!-- Gateway Warning -->
+        {% if not has_gateway %}
+        <div class="gateway-warning">
+            <div class="warning-icon">⚠️</div>
+            <div class="warning-content">
+                <h3>UniFi Gateway Required</h3>
+                <p><strong>{{ gateway_error }}</strong></p>
+                <p>Threat Watch monitors IDS/IPS (Intrusion Detection/Prevention System) events, which are only available on UniFi Gateway devices such as UDM, UCG, UXG, or USG.</p>
+                <p>Your UniFi site appears to have access points and/or switches, but no gateway device. Without a gateway, there are no IDS/IPS events to monitor.</p>
+                <div class="warning-actions">
+                    <a href="/" class="btn btn-primary">← Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Stats Cards -->
         <div class="stats-grid">
             <div class="stat-card severity-high">

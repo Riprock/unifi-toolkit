@@ -15,6 +15,13 @@ from tools.threat_watch.database import ThreatEvent
 from tools.threat_watch.models import SystemStatus
 from tools.threat_watch.scheduler import get_last_refresh, DEFAULT_REFRESH_INTERVAL
 from shared.database import get_db_session
+from shared.models.unifi_config import UniFiConfig
+from shared.unifi_client import UniFiClient
+from shared.crypto import decrypt_password, decrypt_api_key
+from sqlalchemy import select
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Get the directory containing this file
 BASE_DIR = Path(__file__).parent
@@ -50,11 +57,65 @@ def create_app() -> FastAPI:
 
     # Dashboard route
     @app.get("/")
-    async def dashboard(request: Request):
+    async def dashboard(
+        request: Request,
+        db: AsyncSession = Depends(get_db_session)
+    ):
         """Serve the Threat Watch dashboard"""
+        # Check if gateway exists
+        has_gateway = False
+        gateway_error = None
+
+        try:
+            # Get UniFi config
+            result = await db.execute(select(UniFiConfig).where(UniFiConfig.id == 1))
+            config = result.scalar_one_or_none()
+
+            if config:
+                # Decrypt credentials
+                password = None
+                api_key = None
+                if config.password_encrypted:
+                    password = decrypt_password(config.password_encrypted)
+                if config.api_key_encrypted:
+                    api_key = decrypt_api_key(config.api_key_encrypted)
+
+                # Create client and check for gateway
+                client = UniFiClient(
+                    host=config.controller_url,
+                    username=config.username,
+                    password=password,
+                    api_key=api_key,
+                    site=config.site_id,
+                    verify_ssl=config.verify_ssl
+                )
+
+                try:
+                    connected = await client.connect()
+                    if connected:
+                        has_gateway = await client.has_gateway()
+                        if not has_gateway:
+                            gateway_error = "No UniFi Gateway found on this site"
+                    else:
+                        gateway_error = "Failed to connect to UniFi controller"
+                except Exception as e:
+                    logger.error(f"Error checking gateway: {e}")
+                    gateway_error = str(e)
+                finally:
+                    await client.disconnect()
+            else:
+                gateway_error = "UniFi controller not configured"
+        except Exception as e:
+            logger.error(f"Error loading UniFi config: {e}")
+            gateway_error = "Configuration error"
+
         return templates.TemplateResponse(
             "index.html",
-            {"request": request}
+            {
+                "request": request,
+                "has_gateway": has_gateway,
+                "gateway_error": gateway_error
+            }
         )
 
     # Status endpoint

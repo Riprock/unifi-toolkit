@@ -113,6 +113,63 @@ header h1 {
     font-style: italic;
 }
 
+/* Gateway Warning */
+.gateway-warning {
+    background: #fef3c7;
+    border: 2px solid #fbbf24;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+}
+
+:root[data-theme="dark"] .gateway-warning {
+    background: #422006;
+    border-color: #78350f;
+}
+
+.warning-icon {
+    font-size: 3rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.warning-content {
+    flex: 1;
+}
+
+.warning-content h3 {
+    color: #92400e;
+    margin: 0 0 1rem 0;
+    font-size: 1.5rem;
+}
+
+:root[data-theme="dark"] .warning-content h3 {
+    color: #fbbf24;
+}
+
+.warning-content p {
+    color: #92400e;
+    margin: 0 0 0.75rem 0;
+    line-height: 1.6;
+}
+
+:root[data-theme="dark"] .warning-content p {
+    color: #fbbf24;
+}
+
+.warning-content p strong {
+    display: block;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.warning-actions {
+    margin-top: 1.5rem;
+}
+
 /* Stats Cards */
 .stats-grid {
     display: grid;

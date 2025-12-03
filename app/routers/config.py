@@ -61,6 +61,15 @@ class SuccessResponse(BaseModel):
     message: Optional[str] = None
 
 
+class GatewayCheckResponse(BaseModel):
+    """
+    Response model for gateway availability check
+    """
+    has_gateway: bool
+    configured: bool
+    error: Optional[str] = None
+
+
 @router.post("/unifi", response_model=SuccessResponse)
 async def save_unifi_config(
     config: UniFiConfigCreate,
@@ -224,3 +233,75 @@ async def test_saved_unifi_connection(
         await db.commit()
 
     return UniFiConnectionTest(**test_result)
+
+
+@router.get("/gateway-check", response_model=GatewayCheckResponse)
+async def check_gateway_availability(
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Check if a UniFi Gateway is present on the site.
+    This is required for Threat Watch (IDS/IPS features).
+    """
+    # Get config from database
+    result = await db.execute(select(UniFiConfig).where(UniFiConfig.id == 1))
+    config = result.scalar_one_or_none()
+
+    if not config:
+        return GatewayCheckResponse(
+            has_gateway=False,
+            configured=False,
+            error="UniFi controller not configured"
+        )
+
+    # Decrypt credentials
+    password = None
+    api_key = None
+
+    try:
+        if config.password_encrypted:
+            password = decrypt_password(config.password_encrypted)
+        if config.api_key_encrypted:
+            api_key = decrypt_api_key(config.api_key_encrypted)
+    except Exception as e:
+        return GatewayCheckResponse(
+            has_gateway=False,
+            configured=True,
+            error=f"Failed to decrypt credentials: {str(e)}"
+        )
+
+    # Create UniFi client and check for gateway
+    client = UniFiClient(
+        host=config.controller_url,
+        username=config.username,
+        password=password,
+        api_key=api_key,
+        site=config.site_id,
+        verify_ssl=config.verify_ssl
+    )
+
+    try:
+        # Connect to controller
+        connected = await client.connect()
+        if not connected:
+            return GatewayCheckResponse(
+                has_gateway=False,
+                configured=True,
+                error="Failed to connect to UniFi controller"
+            )
+
+        # Check for gateway
+        has_gateway = await client.has_gateway()
+        return GatewayCheckResponse(
+            has_gateway=has_gateway,
+            configured=True
+        )
+
+    except Exception as e:
+        return GatewayCheckResponse(
+            has_gateway=False,
+            configured=True,
+            error=str(e)
+        )
+    finally:
+        await client.disconnect()
