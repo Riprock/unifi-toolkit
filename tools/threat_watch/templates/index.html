@@ -43,15 +43,23 @@
             </div>
         </header>
 
-        <!-- Gateway Warning -->
-        {% if not has_gateway %}
+        <!-- Gateway/IDS Warning -->
+        {% if not supports_ids_ips %}
         <div class="gateway-warning">
             <div class="warning-icon">⚠️</div>
             <div class="warning-content">
+                {% if gateway_info and gateway_info.has_gateway and not gateway_info.supports_ids_ips %}
+                <h3>IDS/IPS Not Available</h3>
+                <p><strong>{{ gateway_error }}</strong></p>
+                <p>Threat Watch monitors IDS/IPS (Intrusion Detection/Prevention System) events. While your site has a gateway device, this model does not include IDS/IPS capabilities.</p>
+                <p>IDS/IPS is available on: UDM, UDM Pro, UDM SE, UDR, UCG, UCG Max, UXG Pro, UXG Lite, and USG series gateways.</p>
+                <p><strong>Note:</strong> The UniFi Express is a capable gateway for smaller deployments, but it does not include the advanced security features found in larger UniFi gateways.</p>
+                {% else %}
                 <h3>UniFi Gateway Required</h3>
                 <p><strong>{{ gateway_error }}</strong></p>
                 <p>Threat Watch monitors IDS/IPS (Intrusion Detection/Prevention System) events, which are only available on UniFi Gateway devices such as UDM, UCG, UXG, or USG.</p>
                 <p>Your UniFi site appears to have access points and/or switches, but no gateway device. Without a gateway, there are no IDS/IPS events to monitor.</p>
+                {% endif %}
                 <div class="warning-actions">
                     <a href="/" class="btn btn-primary">← Back to Dashboard</a>
                 </div>

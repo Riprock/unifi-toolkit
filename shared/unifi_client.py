@@ -12,6 +12,15 @@ from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
+# Gateway models that support IDS/IPS
+# UniFi Express (UX) does NOT support IDS/IPS
+IDS_IPS_SUPPORTED_MODELS = {
+    "UDMPRO", "UDMPROMAX", "UDM", "UDMSE", "UDR", "UDW",
+    "UXG", "UXGPRO", "UXGLITE",
+    "UCG", "UCGMAX", "UDMA6A8",  # UCG Fiber
+    "USG", "USG3P", "USG4P", "USGP4",
+}
+
 # UniFi device model code to friendly name mapping
 UNIFI_MODEL_NAMES = {
     # Gateways / Dream Machines
@@ -31,6 +40,8 @@ UNIFI_MODEL_NAMES = {
     "USG3P": "USG 3P",
     "USG4P": "USG Pro 4",
     "USGP4": "USG Pro 4",
+    "UX": "UniFi Express",
+    "UXBSDM": "UniFi Express",
     # Access Points
     "U7PROMAX": "U7 Pro Max",
     "U7PRO": "U7 Pro",
@@ -938,6 +949,63 @@ class UniFiClient:
         except Exception as e:
             logger.error(f"Failed to check for gateway: {e}")
             return False
+
+    async def get_gateway_info(self) -> Dict:
+        """
+        Get detailed gateway information including IDS/IPS capability.
+
+        Returns:
+            Dictionary with:
+            - has_gateway: True if any gateway device is present
+            - gateway_model: Model code of the gateway (if present)
+            - gateway_name: Friendly name of the gateway
+            - supports_ids_ips: True if the gateway supports IDS/IPS
+        """
+        if not self._session:
+            raise RuntimeError("Not connected to UniFi controller. Call connect() first.")
+
+        result = {
+            "has_gateway": False,
+            "gateway_model": None,
+            "gateway_name": None,
+            "supports_ids_ips": False
+        }
+
+        try:
+            if self.is_unifi_os:
+                url = f"{self.host}/proxy/network/api/s/{self.site}/stat/device"
+            else:
+                url = f"{self.host}/api/s/{self.site}/stat/device"
+
+            async with self._session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    devices = data.get('data', [])
+
+                    # Look for gateway device types
+                    for device in devices:
+                        device_type = device.get('type', '')
+                        if device_type in ('ugw', 'udm', 'uxg'):
+                            model_code = device.get('model', '').upper()
+                            result["has_gateway"] = True
+                            result["gateway_model"] = model_code
+                            result["gateway_name"] = device.get('name') or get_friendly_model_name(model_code)
+                            result["supports_ids_ips"] = model_code in IDS_IPS_SUPPORTED_MODELS
+
+                            logger.info(
+                                f"Found gateway: {result['gateway_name']} ({model_code}), "
+                                f"IDS/IPS: {result['supports_ids_ips']}"
+                            )
+                            return result
+
+                    logger.info("No gateway device found")
+                else:
+                    logger.error(f"Failed to get devices: {resp.status}")
+
+        except Exception as e:
+            logger.error(f"Failed to get gateway info: {e}")
+
+        return result
 
     async def test_connection(self) -> Dict:
         """

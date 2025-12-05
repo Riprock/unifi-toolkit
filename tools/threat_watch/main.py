@@ -62,8 +62,9 @@ def create_app() -> FastAPI:
         db: AsyncSession = Depends(get_db_session)
     ):
         """Serve the Threat Watch dashboard"""
-        # Check if gateway exists
-        has_gateway = False
+        # Check gateway and IDS/IPS capability
+        supports_ids_ips = False
+        gateway_info = None
         gateway_error = None
 
         try:
@@ -93,9 +94,14 @@ def create_app() -> FastAPI:
                 try:
                     connected = await client.connect()
                     if connected:
-                        has_gateway = await client.has_gateway()
-                        if not has_gateway:
+                        gateway_info = await client.get_gateway_info()
+                        supports_ids_ips = gateway_info.get("supports_ids_ips", False)
+
+                        if not gateway_info.get("has_gateway"):
                             gateway_error = "No UniFi Gateway found on this site"
+                        elif not supports_ids_ips:
+                            gateway_name = gateway_info.get("gateway_name", "Unknown")
+                            gateway_error = f"Your gateway ({gateway_name}) does not support IDS/IPS"
                     else:
                         gateway_error = "Failed to connect to UniFi controller"
                 except Exception as e:
@@ -113,7 +119,8 @@ def create_app() -> FastAPI:
             "index.html",
             {
                 "request": request,
-                "has_gateway": has_gateway,
+                "supports_ids_ips": supports_ids_ips,
+                "gateway_info": gateway_info,
                 "gateway_error": gateway_error
             }
         )
