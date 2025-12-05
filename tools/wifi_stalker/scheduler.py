@@ -167,7 +167,12 @@ def _device_to_dict(device: TrackedDevice) -> dict:
         'current_ip_address': device.current_ip_address,
         'current_signal_strength': device.current_signal_strength,
         'last_seen': device.last_seen.isoformat() if device.last_seen else None,
-        'added_at': device.added_at.isoformat() if device.added_at else None
+        'added_at': device.added_at.isoformat() if device.added_at else None,
+        # Wired device fields
+        'is_wired': device.is_wired,
+        'current_switch_mac': device.current_switch_mac,
+        'current_switch_name': device.current_switch_name,
+        'current_switch_port': device.current_switch_port
     }
 
 
@@ -233,7 +238,7 @@ async def process_device(
     unifi_client: UniFiClient
 ):
     """
-    Process a single tracked device
+    Process a single tracked device (wireless or wired)
 
     Args:
         session: Database session
@@ -257,54 +262,119 @@ async def process_device(
         # Update last_seen
         device.last_seen = datetime.now(timezone.utc)
 
-        # Get IP address and signal strength (handle both dict and object formats)
+        # Get client data (handle both dict and object formats)
         if isinstance(client, dict):
             ap_mac = client.get('ap_mac')
             ip_address = client.get('ip')
             signal_strength = client.get('rssi')
+            is_wired = client.get('is_wired', False)
+            sw_mac = client.get('sw_mac')
+            sw_port = client.get('sw_port')
         else:
             ap_mac = getattr(client, 'ap_mac', None)
             ip_address = getattr(client, 'ip', None)
             signal_strength = getattr(client, 'rssi', None)
+            is_wired = getattr(client, 'is_wired', False)
+            sw_mac = getattr(client, 'sw_mac', None)
+            sw_port = getattr(client, 'sw_port', None)
 
-        # Update current IP and signal strength
+        # Update current IP
         device.current_ip_address = ip_address
-        device.current_signal_strength = signal_strength
 
-        if ap_mac:
-            # Get AP name
-            ap_name = await unifi_client.get_ap_name_by_mac(ap_mac)
+        # Update wired status
+        device.is_wired = is_wired
 
-            # Check if AP changed (roaming event)
-            if device.current_ap_mac != ap_mac:
-                logger.info(
-                    f"Device {device.mac_address} roamed from "
-                    f"{device.current_ap_name or 'unknown'} to {ap_name}"
-                )
+        if is_wired:
+            # Wired device - track switch/port instead of AP
+            device.current_signal_strength = None  # No signal for wired
 
-                # Close previous history entry if exists
-                if device.is_connected and device.current_ap_mac:
-                    await close_connection_history(session, device)
+            if sw_mac:
+                # Get switch name
+                switch_name = await unifi_client.get_switch_name_by_mac(sw_mac)
 
-                # Create new history entry
-                new_history = ConnectionHistory(
-                    device_id=device.id,
-                    ap_mac=ap_mac,
-                    ap_name=ap_name,
-                    connected_at=datetime.now(timezone.utc),
-                    signal_strength=signal_strength
-                )
-                session.add(new_history)
+                # Check if switch or port changed
+                if device.current_switch_mac != sw_mac or device.current_switch_port != sw_port:
+                    old_location = f"{device.current_switch_name or 'unknown'} port {device.current_switch_port or '?'}"
+                    new_location = f"{switch_name} port {sw_port or '?'}"
+                    logger.info(
+                        f"Wired device {device.mac_address} moved from "
+                        f"{old_location} to {new_location}"
+                    )
 
-                # Update device current AP
-                device.current_ap_mac = ap_mac
-                device.current_ap_name = ap_name
+                    # Close previous history entry if exists
+                    if device.is_connected and device.current_switch_mac:
+                        await close_connection_history(session, device)
 
-                # Broadcast roaming event via WebSocket
-                await ws_manager.broadcast_device_update(_device_to_dict(device))
+                    # Create new history entry for wired device
+                    new_history = ConnectionHistory(
+                        device_id=device.id,
+                        connected_at=datetime.now(timezone.utc),
+                        is_wired=True,
+                        switch_mac=sw_mac,
+                        switch_name=switch_name,
+                        switch_port=sw_port
+                    )
+                    session.add(new_history)
 
-                # Trigger roaming webhooks
-                await trigger_webhooks(session, 'roamed', device)
+                    # Update device current switch info
+                    device.current_switch_mac = sw_mac
+                    device.current_switch_name = switch_name
+                    device.current_switch_port = sw_port
+
+                    # Clear AP fields for wired devices
+                    device.current_ap_mac = None
+                    device.current_ap_name = None
+
+                    # Broadcast update via WebSocket
+                    await ws_manager.broadcast_device_update(_device_to_dict(device))
+
+                    # Trigger roaming webhooks (port changes are like roaming)
+                    await trigger_webhooks(session, 'roamed', device)
+
+        else:
+            # Wireless device - track AP
+            device.current_signal_strength = signal_strength
+
+            # Clear switch fields for wireless devices
+            device.current_switch_mac = None
+            device.current_switch_name = None
+            device.current_switch_port = None
+
+            if ap_mac:
+                # Get AP name
+                ap_name = await unifi_client.get_ap_name_by_mac(ap_mac)
+
+                # Check if AP changed (roaming event)
+                if device.current_ap_mac != ap_mac:
+                    logger.info(
+                        f"Device {device.mac_address} roamed from "
+                        f"{device.current_ap_name or 'unknown'} to {ap_name}"
+                    )
+
+                    # Close previous history entry if exists
+                    if device.is_connected and device.current_ap_mac:
+                        await close_connection_history(session, device)
+
+                    # Create new history entry
+                    new_history = ConnectionHistory(
+                        device_id=device.id,
+                        ap_mac=ap_mac,
+                        ap_name=ap_name,
+                        connected_at=datetime.now(timezone.utc),
+                        signal_strength=signal_strength,
+                        is_wired=False
+                    )
+                    session.add(new_history)
+
+                    # Update device current AP
+                    device.current_ap_mac = ap_mac
+                    device.current_ap_name = ap_name
+
+                    # Broadcast roaming event via WebSocket
+                    await ws_manager.broadcast_device_update(_device_to_dict(device))
+
+                    # Trigger roaming webhooks
+                    await trigger_webhooks(session, 'roamed', device)
 
         # Mark device as connected
         if not device.is_connected:

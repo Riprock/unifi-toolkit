@@ -88,11 +88,11 @@
                                 <span x-show="sortColumn === 'current_ip_address'" x-text="sortDirection === 'asc' ? '▲' : '▼'"></span>
                             </th>
                             <th @click="sortBy('current_ap_name')" class="sortable">
-                                Current AP
+                                Connected To
                                 <span x-show="sortColumn === 'current_ap_name'" x-text="sortDirection === 'asc' ? '▲' : '▼'"></span>
                             </th>
                             <th @click="sortBy('current_signal_strength')" class="sortable">
-                                Signal
+                                Signal/Type
                                 <span x-show="sortColumn === 'current_signal_strength'" x-text="sortDirection === 'asc' ? '▲' : '▼'"></span>
                             </th>
                             <th @click="sortBy('last_seen')" class="sortable">
@@ -133,14 +133,28 @@
                                     <code x-text="device.mac_address"></code>
                                 </td>
                                 <td x-text="device.current_ip_address || '-'"></td>
-                                <td x-text="device.current_ap_name || '-'"></td>
                                 <td>
-                                    <span x-show="device.current_signal_strength"
-                                          class="signal-badge"
-                                          :class="getSignalClass(device.current_signal_strength)"
-                                          x-text="device.current_signal_strength + ' dBm'">
-                                    </span>
-                                    <span x-show="!device.current_signal_strength">-</span>
+                                    <template x-if="device.is_wired">
+                                        <span class="wired-indicator">
+                                            🔌 <span x-text="device.current_switch_name ? device.current_switch_name + ' Port ' + device.current_switch_port : 'Wired'"></span>
+                                        </span>
+                                    </template>
+                                    <template x-if="!device.is_wired">
+                                        <span x-text="device.current_ap_name || '-'"></span>
+                                    </template>
+                                </td>
+                                <td>
+                                    <template x-if="device.is_wired">
+                                        <span class="wired-badge">Wired</span>
+                                    </template>
+                                    <template x-if="!device.is_wired">
+                                        <span x-show="device.current_signal_strength"
+                                              class="signal-badge"
+                                              :class="getSignalClass(device.current_signal_strength)"
+                                              x-text="device.current_signal_strength + ' dBm'">
+                                        </span>
+                                        <span x-show="!device.current_signal_strength && !device.is_wired">-</span>
+                                    </template>
                                 </td>
                                 <td x-text="formatDateTime(device.last_seen)"></td>
                                 <td>
@@ -455,18 +469,51 @@
                         <div class="info-section">
                             <h3>Connection Information</h3>
                             <div class="info-item">
-                                <span class="info-label">Current AP:</span>
-                                <span class="info-value" x-text="deviceDetails?.current_ap_name || '-'"></span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Signal Strength:</span>
-                                <span x-show="deviceDetails?.current_signal_strength"
-                                      class="signal-badge"
-                                      :class="getSignalClass(deviceDetails?.current_signal_strength)"
-                                      x-text="deviceDetails?.current_signal_strength + ' dBm'">
+                                <span class="info-label">Connection Type:</span>
+                                <span class="info-value">
+                                    <span x-show="deviceDetails?.is_wired" class="wired-badge">🔌 Wired</span>
+                                    <span x-show="!deviceDetails?.is_wired">📶 Wireless</span>
                                 </span>
-                                <span x-show="!deviceDetails?.current_signal_strength">-</span>
                             </div>
+                            <!-- Wired device info -->
+                            <template x-if="deviceDetails?.is_wired">
+                                <div>
+                                    <div class="info-item">
+                                        <span class="info-label">Switch:</span>
+                                        <span class="info-value" x-text="deviceDetails?.current_switch_name || '-'"></span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Port:</span>
+                                        <span class="info-value" x-text="deviceDetails?.current_switch_port || '-'"></span>
+                                    </div>
+                                </div>
+                            </template>
+                            <!-- Wireless device info -->
+                            <template x-if="!deviceDetails?.is_wired">
+                                <div>
+                                    <div class="info-item">
+                                        <span class="info-label">Current AP:</span>
+                                        <span class="info-value" x-text="deviceDetails?.current_ap_name || '-'"></span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Signal Strength:</span>
+                                        <span x-show="deviceDetails?.current_signal_strength"
+                                              class="signal-badge"
+                                              :class="getSignalClass(deviceDetails?.current_signal_strength)"
+                                              x-text="deviceDetails?.current_signal_strength + ' dBm'">
+                                        </span>
+                                        <span x-show="!deviceDetails?.current_signal_strength">-</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Radio Band:</span>
+                                        <span class="info-value" x-text="getRadioBand(deviceDetails?.radio)"></span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Channel:</span>
+                                        <span class="info-value" x-text="deviceDetails?.channel || '-'"></span>
+                                    </div>
+                                </div>
+                            </template>
                             <div class="info-item">
                                 <span class="info-label">Download Speed:</span>
                                 <span class="info-value" x-text="deviceDetails?.tx_rate ? deviceDetails.tx_rate + ' Mbps' : '-'"></span>
@@ -474,14 +521,6 @@
                             <div class="info-item">
                                 <span class="info-label">Upload Speed:</span>
                                 <span class="info-value" x-text="deviceDetails?.rx_rate ? deviceDetails.rx_rate + ' Mbps' : '-'"></span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Radio Band:</span>
-                                <span class="info-value" x-text="getRadioBand(deviceDetails?.radio)"></span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Channel:</span>
-                                <span class="info-value" x-text="deviceDetails?.channel || '-'"></span>
                             </div>
                         </div>
 
@@ -557,8 +596,21 @@
                             <template x-for="entry in history" :key="entry.id">
                                 <div class="history-entry">
                                     <div class="history-ap">
-                                        <strong x-text="entry.ap_name || 'Unknown AP'"></strong>
-                                        <code x-text="entry.ap_mac"></code>
+                                        <!-- Wired connection history -->
+                                        <template x-if="entry.is_wired">
+                                            <div>
+                                                <span class="wired-badge-small">🔌</span>
+                                                <strong x-text="(entry.switch_name || 'Unknown Switch') + ' Port ' + (entry.switch_port || '?')"></strong>
+                                                <code x-text="entry.switch_mac"></code>
+                                            </div>
+                                        </template>
+                                        <!-- Wireless connection history -->
+                                        <template x-if="!entry.is_wired">
+                                            <div>
+                                                <strong x-text="entry.ap_name || 'Unknown AP'"></strong>
+                                                <code x-text="entry.ap_mac"></code>
+                                            </div>
+                                        </template>
                                     </div>
                                     <div class="history-time">
                                         <div>

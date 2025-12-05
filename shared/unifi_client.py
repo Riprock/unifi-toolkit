@@ -311,6 +311,9 @@ class UniFiClient:
                             tx_rate_mbps = round(tx_rate / 1000, 1) if tx_rate else None
                             rx_rate_mbps = round(rx_rate / 1000, 1) if rx_rate else None
 
+                            # Detect if wired device
+                            is_wired = client.get('is_wired', False)
+
                             # Convert to simple dict with needed fields
                             clients_dict[mac] = {
                                 'mac': mac,
@@ -327,7 +330,11 @@ class UniFiClient:
                                 'uptime': client.get('uptime'),
                                 'tx_bytes': client.get('tx_bytes'),
                                 'rx_bytes': client.get('rx_bytes'),
-                                'blocked': client.get('blocked', False)
+                                'blocked': client.get('blocked', False),
+                                # Wired device fields
+                                'is_wired': is_wired,
+                                'sw_mac': client.get('sw_mac'),
+                                'sw_port': client.get('sw_port')
                             }
 
                     return clients_dict
@@ -459,6 +466,41 @@ class UniFiClient:
         except Exception as e:
             logger.error(f"Failed to get AP name for {ap_mac}: {e}")
             return ap_mac
+
+    async def get_switch_name_by_mac(self, sw_mac: str) -> Optional[str]:
+        """
+        Get the friendly name of a switch by its MAC address.
+
+        Args:
+            sw_mac: Switch MAC address
+
+        Returns:
+            Switch name if found, MAC address as fallback
+        """
+        try:
+            normalized_mac = sw_mac.lower().replace("-", ":").replace(".", ":")
+
+            if self.is_unifi_os:
+                url = f"{self.host}/proxy/network/api/s/{self.site}/stat/device"
+            else:
+                url = f"{self.host}/api/s/{self.site}/stat/device"
+
+            async with self._session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    devices = data.get('data', [])
+
+                    for device in devices:
+                        device_mac = device.get('mac', '').lower()
+                        if device_mac == normalized_mac:
+                            name = device.get('name')
+                            model = device.get('model', '')
+                            return name or get_friendly_model_name(model) or normalized_mac
+
+            return normalized_mac
+        except Exception as e:
+            logger.error(f"Failed to get switch name for {sw_mac}: {e}")
+            return sw_mac
 
     async def block_client(self, mac_address: str) -> bool:
         """

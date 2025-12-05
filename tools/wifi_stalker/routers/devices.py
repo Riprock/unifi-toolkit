@@ -142,6 +142,11 @@ async def get_device_details(
         "is_connected": device.is_connected,
         "site_id": device.site_id,
         "is_blocked": False,  # Default, will be updated from UniFi
+        # Wired device fields
+        "is_wired": device.is_wired,
+        "current_switch_mac": device.current_switch_mac,
+        "current_switch_name": device.current_switch_name,
+        "current_switch_port": device.current_switch_port,
     }
 
     # Always try to get blocked status and live data from UniFi
@@ -530,8 +535,10 @@ async def export_device_history(
     writer.writerow([
         'Device Name',
         'MAC Address',
-        'AP Name',
-        'AP MAC',
+        'Connection Type',
+        'AP/Switch Name',
+        'AP/Switch MAC',
+        'Switch Port',
         'Connected At',
         'Disconnected At',
         'Duration (seconds)',
@@ -540,11 +547,19 @@ async def export_device_history(
 
     # Write data rows
     for entry in history_entries:
+        # Determine connection type and location
+        connection_type = 'Wired' if entry.is_wired else 'Wireless'
+        location_name = entry.switch_name if entry.is_wired else entry.ap_name
+        location_mac = entry.switch_mac if entry.is_wired else entry.ap_mac
+        switch_port = entry.switch_port if entry.is_wired else '-'
+
         writer.writerow([
             device.friendly_name or 'Unnamed Device',
             device.mac_address,
-            entry.ap_name or '-',
-            entry.ap_mac or '-',
+            connection_type,
+            location_name or '-',
+            location_mac or '-',
+            switch_port,
             entry.connected_at.isoformat() if entry.connected_at else '-',
             entry.disconnected_at.isoformat() if entry.disconnected_at else '-',
             entry.duration_seconds if entry.duration_seconds else '-',

@@ -89,6 +89,11 @@ class DeviceResponse(BaseModel):
     is_connected: bool
     is_blocked: bool = False
     site_id: str
+    # Wired device fields
+    is_wired: bool = False
+    current_switch_mac: Optional[str] = None
+    current_switch_name: Optional[str] = None
+    current_switch_port: Optional[int] = None
 
     @field_serializer('added_at', 'last_seen')
     def serialize_dt(self, dt: Optional[datetime], _info) -> Optional[str]:
@@ -120,6 +125,11 @@ class HistoryEntry(BaseModel):
     disconnected_at: Optional[datetime]
     duration_seconds: Optional[int]
     signal_strength: Optional[int]
+    # Wired device fields
+    is_wired: bool = False
+    switch_mac: Optional[str] = None
+    switch_name: Optional[str] = None
+    switch_port: Optional[int] = None
 
     @field_serializer('connected_at', 'disconnected_at')
     def serialize_dt(self, dt: Optional[datetime], _info) -> Optional[str]:
@@ -223,6 +233,11 @@ class DeviceDetailResponse(BaseModel):
     current_signal_strength: Optional[int]
     is_connected: bool
     site_id: str
+    # Wired device fields
+    is_wired: bool = False
+    current_switch_mac: Optional[str] = None
+    current_switch_name: Optional[str] = None
+    current_switch_port: Optional[int] = None
 
     # Live UniFi data (from current connection)
     hostname: Optional[str] = None

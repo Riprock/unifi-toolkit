@@ -9,7 +9,7 @@ from shared.models.base import Base
 
 class TrackedDevice(Base):
     """
-    Represents a Wi-Fi device that the user wants to track
+    Represents a device that the user wants to track (wireless or wired)
     """
     __tablename__ = "stalker_tracked_devices"
 
@@ -25,6 +25,11 @@ class TrackedDevice(Base):
     is_connected = Column(Boolean, default=False, nullable=False)
     is_blocked = Column(Boolean, default=False, nullable=False)
     site_id = Column(String, nullable=False)
+    # Wired device support
+    is_wired = Column(Boolean, default=False, nullable=False)
+    current_switch_mac = Column(String, nullable=True)
+    current_switch_name = Column(String, nullable=True)
+    current_switch_port = Column(Integer, nullable=True)
 
     # Relationship to connection history
     history = relationship("ConnectionHistory", back_populates="device", cascade="all, delete-orphan")
@@ -35,7 +40,7 @@ class TrackedDevice(Base):
 
 class ConnectionHistory(Base):
     """
-    Tracks roaming events - when devices connect/disconnect or move between APs
+    Tracks roaming events - when devices connect/disconnect or move between APs/switches
     """
     __tablename__ = "stalker_connection_history"
 
@@ -47,6 +52,11 @@ class ConnectionHistory(Base):
     disconnected_at = Column(DateTime, nullable=True)
     duration_seconds = Column(Integer, nullable=True)
     signal_strength = Column(Integer, nullable=True)
+    # Wired device support
+    is_wired = Column(Boolean, default=False, nullable=False)
+    switch_mac = Column(String, nullable=True)
+    switch_name = Column(String, nullable=True)
+    switch_port = Column(Integer, nullable=True)
 
     # Relationship to device
     device = relationship("TrackedDevice", back_populates="history")
