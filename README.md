@@ -159,7 +159,7 @@ Configure via `.env` or the web UI (web UI takes precedence):
 | `UNIFI_USERNAME` | Username (legacy controllers) |
 | `UNIFI_PASSWORD` | Password (legacy controllers) |
 | `UNIFI_API_KEY` | API key (UniFi OS: UDM, UCG, Cloud Key) |
-| `UNIFI_SITE_ID` | Site ID (default: `default`) |
+| `UNIFI_SITE_ID` | Site ID from URL, not friendly name (default: `default`). For multi-site, use ID from `/manage/site/{id}/...` |
 | `UNIFI_VERIFY_SSL` | SSL verification (default: `false`) |
 
 #### Tool Settings
