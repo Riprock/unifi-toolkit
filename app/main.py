@@ -24,9 +24,11 @@ from tools.threat_watch.scheduler import start_scheduler as start_threat_schedul
 from app.routers.auth import router as auth_router, AuthMiddleware, is_auth_enabled
 from app.routers.config import router as config_router
 
-# Configure logging
+# Configure logging - respect LOG_LEVEL from environment
+log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
+log_level = getattr(logging, log_level_str, logging.INFO)
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)

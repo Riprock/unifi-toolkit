@@ -171,12 +171,17 @@ class UniFiClient:
             True if connection successful, False otherwise
         """
         try:
+            logger.debug(f"Attempting to connect to UniFi controller at {self.host}")
+            logger.debug(f"Authentication method: {'API Key' if self.api_key else 'Username/Password'}")
+            logger.debug(f"UniFi OS mode: {self.is_unifi_os}, Site: {self.site}, Verify SSL: {self.verify_ssl}")
+
             # Create SSL context
             ssl_context = None
             if not self.verify_ssl:
                 ssl_context = ssl.create_default_context()
                 ssl_context.check_hostname = False
                 ssl_context.verify_mode = ssl.CERT_NONE
+                logger.debug("SSL verification disabled")
 
             # Create aiohttp session
             connector = aiohttp.TCPConnector(ssl=ssl_context)
@@ -247,6 +252,9 @@ class UniFiClient:
                 host = parsed.hostname or self.host
                 port = parsed.port or 8443
 
+                logger.debug(f"Using legacy controller mode - host: {host}, port: {port}")
+                logger.debug(f"Username: {self.username}")
+
                 # Create Configuration object (aiounifi v85+ API)
                 config = Configuration(
                     session=self._session,
@@ -261,12 +269,14 @@ class UniFiClient:
                 self.controller = Controller(config)
 
                 # Login to controller
+                logger.debug("Attempting aiounifi controller login...")
                 await self.controller.login()
                 logger.info(f"Successfully connected to UniFi controller at {self.host}")
                 return True
 
         except Exception as e:
             logger.error(f"Failed to connect to UniFi controller: {e}")
+            logger.debug(f"Connection error details - Type: {type(e).__name__}, Args: {e.args}")
             await self.disconnect()
             return False
 
