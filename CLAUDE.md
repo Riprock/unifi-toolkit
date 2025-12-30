@@ -237,9 +237,9 @@ docker compose down
 
 ## Python Version Constraint
 
-**CRITICAL**: This project requires **Python 3.9-3.12** only.
+**CRITICAL**: This project requires **Python 3.12+**.
 
-It does **NOT** support Python 3.13+ due to the `aiounifi==85` dependency.
+The `aiounifi==85` dependency requires Python 3.12 or higher.
 
 ## Shared Infrastructure Details
 
@@ -724,7 +724,7 @@ The scheduler runs automatically, but to test immediately, restart the app (refr
 - Enable DEBUG logging to see active clients list
 
 **Python version errors**:
-- Must use Python 3.9-3.12 (not 3.13+)
+- Must use Python 3.12 or higher
 - Run `python --version` to check
 
 **SQLite errors after git pull** (e.g., "no such column", connection test works but save fails):
